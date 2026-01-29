@@ -1,4 +1,3 @@
-
 import streamlit as st
 import numpy as np
 import pandas as pd
@@ -18,7 +17,7 @@ st.caption(
 
 st.write("Enter applicant details to predict loan approval probability.")
 
-# ------------------ Load model & scaler safely ------------------
+# ------------------ Load model & scaler ------------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 MODEL_PATH = os.path.join(BASE_DIR, "models", "loan_model.pkl")
@@ -33,66 +32,44 @@ def load_artifacts():
 model, scaler = load_artifacts()
 
 # ------------------ Input fields ------------------
-applicant_income = st.number_input(
-    "Applicant Income",
-    min_value=0.0,
-    step=500.0
-)
-
-coapplicant_income = st.number_input(
-    "Coapplicant Income",
-    min_value=0.0,
-    step=500.0
-)
-
-loan_amount = st.number_input(
-    "Loan Amount",
-    min_value=0.0,
-    step=10.0
-)
-
-loan_term = st.number_input(
-    "Loan Term (months)",
-    min_value=1,
-    step=12
-)
-
-credit_history = st.selectbox(
-    "Credit History",
-    options=[0, 1],
-    help="1 = Good credit history, 0 = No credit history"
-)
-
-dependents = st.number_input(
-    "Dependents",
-    min_value=0,
-    max_value=5,
-    step=1
-)
+applicant_income = st.number_input("Applicant Income", min_value=0.0, step=500.0)
+coapplicant_income = st.number_input("Coapplicant Income", min_value=0.0, step=500.0)
+loan_amount = st.number_input("Loan Amount", min_value=0.0, step=10.0)
+loan_term = st.number_input("Loan Term (months)", min_value=1, step=12)
+credit_history = st.selectbox("Credit History", [0, 1])
+dependents = st.number_input("Dependents", min_value=0, max_value=5, step=1)
 
 # ------------------ Prediction ------------------
 if st.button("Predict Loan Approval"):
-    # IMPORTANT: column names & order must match TRAINING DATA
-    input_df = pd.DataFrame([{
+
+    # Base user input (human-readable)
+    user_input = {
         "ApplicantIncome": applicant_income,
         "CoapplicantIncome": coapplicant_income,
         "Dependents": dependents,
         "LoanAmount": loan_amount,
         "Loan_Amount_Term": loan_term,
-        "Credit_History": credit_history
-    }])
+        "Credit_History": credit_history,
+    }
 
-    # Scale input
+    # 🔑 THIS IS THE KEY FIX:
+    # Build input using EXACT features scaler was trained on
+    feature_names = scaler.feature_names_in_
+
+    input_row = {}
+    for col in feature_names:
+        input_row[col] = user_input.get(col, 0)
+
+    input_df = pd.DataFrame([input_row])
+
+    # Scale + predict
     input_scaled = scaler.transform(input_df)
-
-    # Predict probability
     prob = model.predict_proba(input_scaled)[0][1]
 
     # ------------------ Output ------------------
     st.subheader("Result")
     st.write(f"Approval Probability: **{prob:.2f}**")
 
-    # Sensible threshold for demo
     THRESHOLD = 0.40
 
     if prob >= THRESHOLD:
