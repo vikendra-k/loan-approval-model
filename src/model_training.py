@@ -1,44 +1,79 @@
+import os
+import pandas as pd
+import joblib
+
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-
-def scale_features(X_train, X_test):
-    """
-    Scales features using StandardScaler.
-    Fit on training data, transform both train and test.
-    """
-    scaler = StandardScaler()
-
-    X_train_scaled = scaler.fit_transform(X_train)
-    X_test_scaled = scaler.transform(X_test)
-
-    return X_train_scaled, X_test_scaled, scaler
-
-'''from sklearn.linear_model import LogisticRegression
-
-def train_logistic_regression(X_train, y_train):
-    """
-    Trains a Logistic Regression classifier.
-    """
-    model = LogisticRegression(
-        max_iter=1000,
-        solver="lbfgs"
-    )
-    
-    model.fit(X_train, y_train)
-    return model'''
-
 from sklearn.linear_model import LogisticRegression
+from sklearn.calibration import CalibratedClassifierCV
 
-def train_logistic_regression(X_train, y_train):
-    """
-    Trains a cost-sensitive Logistic Regression classifier.
-    """
-    model = LogisticRegression(
-        max_iter=1000,
-        solver="lbfgs",
-        class_weight={0: 1, 1: 2}  # penalize wrong approvals
-    )
-    
-    model.fit(X_train, y_train)
-    return model
+from src.config import FEATURES, TARGET
 
+# ================= PATH SETUP =================
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_PATH = os.path.join(BASE_DIR, "..", "data", "loan_approval_data.csv")
+MODEL_PATH = os.path.join(BASE_DIR, "..", "models", "loan_model.pkl")
+SCALER_PATH = os.path.join(BASE_DIR, "..", "models", "scaler.pkl")
+
+print("Loading data from:", DATA_PATH)
+
+# ================= LOAD DATA =================
+df = pd.read_csv(DATA_PATH)
+
+print("\nColumns in dataset:")
+print(df.columns.tolist())
+
+# ================= TARGET ENCODING =================
+df[TARGET] = df[TARGET].astype(str).str.strip().str.upper()
+df[TARGET] = df[TARGET].map({
+    "Y": 1, "YES": 1, "1": 1,
+    "N": 0, "NO": 0, "0": 0
+})
+
+if df[TARGET].isna().any():
+    raise ValueError("Target column contains unmapped values.")
+
+# ================= FEATURE SELECTION =================
+X = df[FEATURES]
+y = df[TARGET]
+
+# ================= TRAIN TEST SPLIT =================
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y,
+    test_size=0.2,
+    stratify=y,
+    random_state=42
+)
+
+# ================= SCALING =================
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+# ================= MODEL =================
+base_model = LogisticRegression(
+    max_iter=1000,
+    solver="lbfgs",
+    class_weight="balanced"
+)
+
+model = CalibratedClassifierCV(
+    base_model,
+    method="sigmoid",
+    cv=5
+)
+
+model.fit(X_train_scaled, y_train)
+
+# ================= SANITY CHECK =================
+probs = model.predict_proba(X_train_scaled)[:, 1]
+print("\nProbability sanity check:")
+print("Min probability:", probs.min())
+print("Max probability:", probs.max())
+
+# ================= SAVE ARTIFACTS =================
+joblib.dump(model, MODEL_PATH)
+joblib.dump(scaler, SCALER_PATH)
+
+print("\n✅ Model and scaler saved successfully")
 
