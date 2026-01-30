@@ -1,5 +1,10 @@
 # Loan Approval Prediction System
 
+🚀 **Live App:**  
+👉 https://loan-approval-model-vihvjcncds6x4bi2oljbnn.streamlit.app/
+
+ℹ️ *Note: The app may take a few seconds to load if it was inactive.*
+
 An end-to-end machine learning project that predicts whether a loan
 application should be approved based on applicant financial, personal,
 and credit information.
