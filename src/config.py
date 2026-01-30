@@ -1,12 +1,12 @@
 # Single source of truth for the ML pipeline
 
 FEATURES = [
-    "ApplicantIncome",
-    "CoapplicantIncome",
+    "Applicant_Income",
+    "Coapplicant_Income",
     "Dependents",
-    "LoanAmount",
-    "Loan_Amount_Term",
-    "Credit_History",
+    "Loan_Amount",
+    "Loan_Term",
+    "Credit_Score",
 ]
 
 TARGET = "Loan_Approved"

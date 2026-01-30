@@ -1,8 +1,9 @@
 import streamlit as st
-import numpy as np
 import pandas as pd
 import joblib
 import os
+
+from src.config import FEATURES, THRESHOLD
 
 # ------------------ Page config ------------------
 st.set_page_config(
@@ -34,43 +35,31 @@ model, scaler = load_artifacts()
 # ------------------ Input fields ------------------
 applicant_income = st.number_input("Applicant Income", min_value=0.0, step=500.0)
 coapplicant_income = st.number_input("Coapplicant Income", min_value=0.0, step=500.0)
+dependents = st.number_input("Dependents", min_value=0, max_value=5, step=1)
 loan_amount = st.number_input("Loan Amount", min_value=0.0, step=10.0)
 loan_term = st.number_input("Loan Term (months)", min_value=1, step=12)
-credit_history = st.selectbox("Credit History", [0, 1])
-dependents = st.number_input("Dependents", min_value=0, max_value=5, step=1)
+credit_score = st.number_input("Credit Score", min_value=300, max_value=900, step=10)
 
 # ------------------ Prediction ------------------
 if st.button("Predict Loan Approval"):
 
-    # Base user input (human-readable)
+    # 🔒 EXACT FEATURE NAMES (MATCH CSV + TRAINING)
     user_input = {
-        "ApplicantIncome": applicant_income,
-        "CoapplicantIncome": coapplicant_income,
+        "Applicant_Income": applicant_income,
+        "Coapplicant_Income": coapplicant_income,
         "Dependents": dependents,
-        "LoanAmount": loan_amount,
-        "Loan_Amount_Term": loan_term,
-        "Credit_History": credit_history,
+        "Loan_Amount": loan_amount,
+        "Loan_Term": loan_term,
+        "Credit_Score": credit_score,
     }
 
-    # 🔑 THIS IS THE KEY FIX:
-    # Build input using EXACT features scaler was trained on
-    feature_names = scaler.feature_names_in_
+    input_df = pd.DataFrame([user_input])[FEATURES]
 
-    input_row = {}
-    for col in feature_names:
-        input_row[col] = user_input.get(col, 0)
-
-    input_df = pd.DataFrame([input_row])
-
-    # Scale + predict
     input_scaled = scaler.transform(input_df)
     prob = model.predict_proba(input_scaled)[0][1]
 
-    # ------------------ Output ------------------
     st.subheader("Result")
     st.write(f"Approval Probability: **{prob:.2f}**")
-
-    THRESHOLD = 0.40
 
     if prob >= THRESHOLD:
         st.success("✅ Loan Approved")

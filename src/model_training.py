@@ -23,19 +23,23 @@ df = pd.read_csv(DATA_PATH)
 print("\nColumns in dataset:")
 print(df.columns.tolist())
 
-# ================= TARGET ENCODING =================
-df[TARGET] = df[TARGET].astype(str).str.strip().str.upper()
-df[TARGET] = df[TARGET].map({
-    "Y": 1, "YES": 1, "1": 1,
-    "N": 0, "NO": 0, "0": 0
-})
+# ================= CLEAN TARGET =================
+df[TARGET] = (
+    df[TARGET]
+    .astype(str)
+    .str.strip()
+    .str.lower()
+)
 
-if df[TARGET].isna().any():
-    raise ValueError("Target column contains unmapped values.")
+# YES -> 1, everything else -> 0
+df[TARGET] = (df[TARGET] == "yes").astype(int)
 
 # ================= FEATURE SELECTION =================
 X = df[FEATURES]
 y = df[TARGET]
+
+# ================= HANDLE MISSING VALUES (KEY FIX) =================
+X = X.fillna(X.median())
 
 # ================= TRAIN TEST SPLIT =================
 X_train, X_test, y_train, y_test = train_test_split(
@@ -76,4 +80,3 @@ joblib.dump(model, MODEL_PATH)
 joblib.dump(scaler, SCALER_PATH)
 
 print("\n✅ Model and scaler saved successfully")
-
